@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "module": "ESNext", // generates import-friendly code
+    "target": "ES2019",
+    "outDir": "dist/esm",
+    "declaration": true,
+    "declarationDir": "dist/types",
+    "moduleResolution": "node",
+    "lib": ["ES2020", "DOM"],
+    "rootDir": "./src",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "declarationMap": true,
+    "sourceMap": true
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}
