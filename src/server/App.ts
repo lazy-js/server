@@ -25,25 +25,42 @@ interface AppParams {
   allowedOrigins: string[];
   disableRequestLogging?: boolean;
   disableSecurityHeaders?: boolean;
+  enableRoutesLogging?: boolean;
   serviceName?: string;
   prefix?: string;
 }
 
-interface IApp {
-  mountRoute({
-    router,
-    prefix,
-    endpoint,
-  }: {
-    router: Router;
-    prefix?: string;
-    endpoint?: string;
-  }): void;
-  start(alternativePort?: number): void;
+interface AppEvents {
+  started: () => void;
+  error: (err: Error, req: Request) => void;
 }
+
+class AppEventEmitter extends EventEmitter {
+  emit<Event extends keyof AppEvents>(
+    event: Event,
+    ...args: Parameters<AppEvents[Event]>
+  ): boolean {
+    return super.emit(event, ...args);
+  }
+
+  on<Event extends keyof AppEvents>(
+    event: Event,
+    listener: AppEvents[Event],
+  ): this {
+    return super.on(event, listener);
+  }
+
+  once<Event extends keyof AppEvents>(
+    event: Event,
+    listener: AppEvents[Event],
+  ): this {
+    return super.once(event, listener);
+  }
+}
+
 export const requestStorage = new AsyncLocalStorage<Request>();
 
-export class App extends EventEmitter implements IApp {
+export class App extends AppEventEmitter {
   static requestStorage = requestStorage;
   private readonly port: number;
   private app: express.Application;
@@ -53,17 +70,19 @@ export class App extends EventEmitter implements IApp {
   private disableSecurityHeaders: boolean;
   public serviceName: string;
   private prefix: string;
-
+  private enableRoutesLogging: boolean;
   constructor(params: AppParams) {
     super();
     this.port = params.port;
-    this.allowedOrigins = params.allowedOrigins;
-    this.disableRequestLogging = params.disableRequestLogging || false;
-    this.disableSecurityHeaders = params.disableSecurityHeaders || false;
-    this.app = express();
-    this.routes = [];
     this.serviceName = params.serviceName || 'unknown';
     this.prefix = params.prefix || '';
+    this.allowedOrigins = params.allowedOrigins;
+    this.disableRequestLogging = !!params.disableRequestLogging;
+    this.disableSecurityHeaders = !!params.disableSecurityHeaders;
+    this.enableRoutesLogging = !!params.enableRoutesLogging;
+
+    this.app = express();
+    this.routes = [];
     this.setupEssentialMiddlewares();
     this.setupHealthRoute();
   }
@@ -105,7 +124,7 @@ export class App extends EventEmitter implements IApp {
       res: Response,
       next: NextFunction,
     ) => {
-      this.emit('error', err);
+      this.emit('error', err, req);
       globalErrorHandler(err, req, res, next);
     };
     this.app.use(generalErrorHandler);
@@ -118,17 +137,13 @@ export class App extends EventEmitter implements IApp {
       (this.prefix && !this.prefix.startsWith('/')) ||
       (this.prefix && this.prefix.endsWith('/'))
     ) {
-      throw new AppError({
-        code: 'INVALID_ENDPOINT',
-        statusCode: 400,
-        label: 'Invalid endpoint',
-        category: 'router',
-      });
+      throw new Error('Invalid endpoint configuration');
     }
-    logRouterPaths(controller.getRouter(), {
-      basePath: this.prefix + route,
-      label: controller.pathname?.toUpperCase(),
-    });
+    if (this.enableRoutesLogging)
+      logRouterPaths(controller.getRouter(), {
+        basePath: this.prefix + route,
+        label: controller.pathname?.toUpperCase(),
+      });
     this.app.use(this.prefix + route, controller.getRouter());
     return this;
   }

@@ -14,20 +14,32 @@ const routerLogger_1 = require("../utils/routerLogger");
 const async_hooks_1 = require("async_hooks");
 const globalErrorHandler_1 = require("../utils/globalErrorHandler");
 require("./process");
+class AppEventEmitter extends events_1.EventEmitter {
+    emit(event, ...args) {
+        return super.emit(event, ...args);
+    }
+    on(event, listener) {
+        return super.on(event, listener);
+    }
+    once(event, listener) {
+        return super.once(event, listener);
+    }
+}
 exports.requestStorage = new async_hooks_1.AsyncLocalStorage();
-class App extends events_1.EventEmitter {
+class App extends AppEventEmitter {
     constructor(params) {
         super();
         this.routes = [];
         this.mountModule = this.mountController;
         this.port = params.port;
-        this.allowedOrigins = params.allowedOrigins;
-        this.disableRequestLogging = params.disableRequestLogging || false;
-        this.disableSecurityHeaders = params.disableSecurityHeaders || false;
-        this.app = (0, express_1.default)();
-        this.routes = [];
         this.serviceName = params.serviceName || 'unknown';
         this.prefix = params.prefix || '';
+        this.allowedOrigins = params.allowedOrigins;
+        this.disableRequestLogging = !!params.disableRequestLogging;
+        this.disableSecurityHeaders = !!params.disableSecurityHeaders;
+        this.enableRoutesLogging = !!params.enableRoutesLogging;
+        this.app = (0, express_1.default)();
+        this.routes = [];
         this.setupEssentialMiddlewares();
         this.setupHealthRoute();
     }
@@ -61,7 +73,7 @@ class App extends events_1.EventEmitter {
     }
     setupErrorHandling() {
         const generalErrorHandler = (err, req, res, next) => {
-            this.emit('error', err);
+            this.emit('error', err, req);
             (0, globalErrorHandler_1.globalErrorHandler)(err, req, res, next);
         };
         this.app.use(generalErrorHandler);
@@ -71,17 +83,13 @@ class App extends events_1.EventEmitter {
         if ((controller.pathname && !controller.pathname.startsWith('/')) ||
             (this.prefix && !this.prefix.startsWith('/')) ||
             (this.prefix && this.prefix.endsWith('/'))) {
-            throw new utils_1.AppError({
-                code: 'INVALID_ENDPOINT',
-                statusCode: 400,
-                label: 'Invalid endpoint',
-                category: 'router',
-            });
+            throw new Error('Invalid endpoint configuration');
         }
-        (0, routerLogger_1.logRouterPaths)(controller.getRouter(), {
-            basePath: this.prefix + route,
-            label: (_a = controller.pathname) === null || _a === void 0 ? void 0 : _a.toUpperCase(),
-        });
+        if (this.enableRoutesLogging)
+            (0, routerLogger_1.logRouterPaths)(controller.getRouter(), {
+                basePath: this.prefix + route,
+                label: (_a = controller.pathname) === null || _a === void 0 ? void 0 : _a.toUpperCase(),
+            });
         this.app.use(this.prefix + route, controller.getRouter());
         return this;
     }

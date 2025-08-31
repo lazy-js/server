@@ -1,4 +1,4 @@
-import express, { Router } from 'express';
+import express, { Request, Router } from 'express';
 import { EventEmitter } from 'events';
 import { AsyncLocalStorage } from 'async_hooks';
 import './process';
@@ -11,19 +11,21 @@ interface AppParams {
     allowedOrigins: string[];
     disableRequestLogging?: boolean;
     disableSecurityHeaders?: boolean;
+    enableRoutesLogging?: boolean;
     serviceName?: string;
     prefix?: string;
 }
-interface IApp {
-    mountRoute({ router, prefix, endpoint, }: {
-        router: Router;
-        prefix?: string;
-        endpoint?: string;
-    }): void;
-    start(alternativePort?: number): void;
+interface AppEvents {
+    started: () => void;
+    error: (err: Error, req: Request) => void;
+}
+declare class AppEventEmitter extends EventEmitter {
+    emit<Event extends keyof AppEvents>(event: Event, ...args: Parameters<AppEvents[Event]>): boolean;
+    on<Event extends keyof AppEvents>(event: Event, listener: AppEvents[Event]): this;
+    once<Event extends keyof AppEvents>(event: Event, listener: AppEvents[Event]): this;
 }
 export declare const requestStorage: AsyncLocalStorage<express.Request<import("express-serve-static-core").ParamsDictionary, any, any, import("qs").ParsedQs, Record<string, any>>>;
-export declare class App extends EventEmitter implements IApp {
+export declare class App extends AppEventEmitter {
     static requestStorage: AsyncLocalStorage<express.Request<import("express-serve-static-core").ParamsDictionary, any, any, import("qs").ParsedQs, Record<string, any>>>;
     private readonly port;
     private app;
@@ -33,6 +35,7 @@ export declare class App extends EventEmitter implements IApp {
     private disableSecurityHeaders;
     serviceName: string;
     private prefix;
+    private enableRoutesLogging;
     constructor(params: AppParams);
     private setupEssentialMiddlewares;
     private setupHealthRoute;
