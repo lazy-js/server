@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Router, } from 'express';
 import cors from 'cors';
 import { AppError, generalErrors } from '@lazy-js/utils';
 import morgan from 'morgan';
@@ -8,6 +8,7 @@ import { logRouterPaths } from '../utils/routerLogger';
 import { AsyncLocalStorage } from 'async_hooks';
 import { globalErrorHandler } from '../utils/globalErrorHandler';
 import './process';
+export { Router };
 class AppEventEmitter extends EventEmitter {
     emit(event, ...args) {
         return super.emit(event, ...args);

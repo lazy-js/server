@@ -14,7 +14,7 @@ import { logRouterPaths } from '../utils/routerLogger';
 import { AsyncLocalStorage } from 'async_hooks';
 import { globalErrorHandler } from '../utils/globalErrorHandler';
 import './process';
-
+export { Request, Response, NextFunction, Router };
 interface IController {
   getRouter(): Router;
   pathname?: string;

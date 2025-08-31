@@ -1,7 +1,8 @@
-import express, { Request, Router } from 'express';
+import express, { Request, Response, NextFunction, Router } from 'express';
 import { EventEmitter } from 'events';
 import { AsyncLocalStorage } from 'async_hooks';
 import './process';
+export { Request, Response, NextFunction, Router };
 interface IController {
     getRouter(): Router;
     pathname?: string;
@@ -50,5 +51,4 @@ export declare class App extends AppEventEmitter {
     }): this;
     start(alternativePort?: number): void;
 }
-export {};
 //# sourceMappingURL=App.d.ts.map
