@@ -1,7 +1,7 @@
-import express, { Request, Response, NextFunction, Router } from 'express';
-import { EventEmitter } from 'events';
-import { AsyncLocalStorage } from 'async_hooks';
-import './process';
+import express, { Request, Response, NextFunction, Router } from "express";
+import { EventEmitter } from "events";
+import { AsyncLocalStorage } from "async_hooks";
+import "./process";
 export { Request, Response, NextFunction, Router };
 interface IController {
     getRouter(): Router;
@@ -29,7 +29,7 @@ export declare const requestStorage: AsyncLocalStorage<express.Request<import("e
 export declare class App extends AppEventEmitter {
     static requestStorage: AsyncLocalStorage<express.Request<import("express-serve-static-core").ParamsDictionary, any, any, import("qs").ParsedQs, Record<string, any>>>;
     private readonly port;
-    private app;
+    expressApp: express.Application;
     private routes;
     private allowedOrigins;
     private disableRequestLogging;
@@ -44,7 +44,7 @@ export declare class App extends AppEventEmitter {
     private setupErrorHandling;
     mountModule: (controller: IController, route?: string) => this;
     mountController(controller: IController, route?: string): this;
-    mountRoute({ router, prefix, endpoint, }: {
+    mountRoute({ router, prefix, endpoint }: {
         router: Router;
         prefix?: string;
         endpoint?: string;
