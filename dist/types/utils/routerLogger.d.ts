@@ -29,14 +29,22 @@
  * });
  * ```
  */
-import { Router } from 'express';
-import { Logger } from '@lazy-js/utils';
+import { Router } from "express";
+interface ILogger {
+    error(...args: any[]): void;
+    info(...args: any[]): void;
+    warn(...args: any[]): void;
+    group(...args: any[]): void;
+    groupEnd(...args: any[]): void;
+    groupCollapsed(...args: any[]): void;
+    table(...args: any[]): void;
+}
 /** Options to customize router logging behavior. */
 type RouterLoggerOptions = {
     /** Optional prefix prepended to discovered route paths (e.g., controller pathname). */
     basePath?: string;
     /** Logger instance to use; defaults to a new `Logger` named "Router Logger". */
-    logger?: Logger;
+    logger?: ILogger;
     /** Console group label. */
     label?: string;
     /** Whether to use `groupCollapsed` instead of `group`. Defaults to true. */

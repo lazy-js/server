@@ -1,72 +1,56 @@
-import { RequestHandler, Router } from 'express';
+import { RequestHandler, Router } from "express";
 
-interface RouteDefinition {
-  description?: string;
-  tags?: string[];
-}
 export class BaseController {
-  public pathname?: string;
-  public router: Router;
+        public pathname?: string;
+        public router: Router;
 
-  constructor(params?: { pathname?: string }) {
-    this.pathname = params?.pathname || '';
-    this.router = Router();
-    this.mountGetRoute('/ping', async function (req, res, next) {
-      res.send('pong');
-    });
-  }
+        constructor(params?: { pathname?: string; healthRoute?: `/${string}` }) {
+                this.pathname = params?.pathname || "";
+                this.router = Router();
+                if (params?.healthRoute) {
+                        this.mountGetRoute(params.healthRoute, async function (req, res, next) {
+                                res.status(200).send("ok");
+                        });
+                }
+        }
 
-  public mountPostRoute(
-    route: string = '/',
-    handler: RequestHandler,
-    definition?: RouteDefinition,
-  ) {
-    this.router.post(this.pathname + route, handler);
-  }
+        public get = this.mountGetRoute;
+        public post = this.mountPostRoute;
+        public put = this.mountPutRoute;
+        public delete = this.mountDeleteRoute;
+        public patch = this.mountPatchRoute;
 
-  public mountGetRoute(
-    route: string = '/',
-    handler: RequestHandler,
-    definition?: RouteDefinition,
-  ) {
-    this.router.get(this.pathname + route, handler);
-  }
+        public mountPostRoute(route: string = "/", ...handler: RequestHandler[]) {
+                this.router.post(this.pathname + route, ...handler);
+        }
 
-  public mountPutRoute(
-    route: string = '/',
-    handler: RequestHandler,
-    definition?: RouteDefinition,
-  ) {
-    this.router.put(this.pathname + route, handler);
-  }
+        public mountGetRoute(route: string = "/", ...handler: RequestHandler[]) {
+                this.router.get(this.pathname + route, ...handler);
+        }
 
-  public mountDeleteRoute(
-    route: string = '/',
-    handler: RequestHandler,
-    definition?: RouteDefinition,
-  ) {
-    this.router.delete(this.pathname + route, handler);
-  }
+        public mountPutRoute(route: string = "/", ...handler: RequestHandler[]) {
+                this.router.put(this.pathname + route, ...handler);
+        }
 
-  public mountPatchRoute(
-    route: string = '/',
-    handler: RequestHandler,
-    definition?: RouteDefinition,
-  ) {
-    this.router.patch(this.pathname + route, handler);
-  }
+        public mountDeleteRoute(route: string = "/", ...handler: RequestHandler[]) {
+                this.router.delete(this.pathname + route, ...handler);
+        }
 
-  public mountController(controller: BaseController, route: string = '/') {
-    this.mountRouter(controller.getRouter(), route);
-    return this;
-  }
+        public mountPatchRoute(route: string = "/", ...handler: RequestHandler[]) {
+                this.router.patch(this.pathname + route, ...handler);
+        }
 
-  public mountRouter(router: Router, route: string = '/') {
-    this.router.use(this.pathname + route, router);
-    return this;
-  }
+        public mountController(controller: BaseController, route: string = "/") {
+                this.mountRouter(controller.getRouter(), route);
+                return this;
+        }
 
-  public getRouter() {
-    return this.router;
-  }
+        public mountRouter(router: Router, route: string = "/") {
+                this.router.use(this.pathname + route, router);
+                return this;
+        }
+
+        public getRouter() {
+                return this.router;
+        }
 }

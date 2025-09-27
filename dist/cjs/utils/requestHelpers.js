@@ -9,7 +9,7 @@ const App_1 = require("../server/App");
 function Query(...properties) {
     const req = App_1.requestStorage.getStore();
     if (!req)
-        throw new Error('Query helper should run inside a async hook');
+        throw new Error("Query helper should run inside a async hook");
     const result = {};
     for (const prop of properties) {
         result[prop] = req.query[prop];
@@ -19,7 +19,7 @@ function Query(...properties) {
 function Param(...properties) {
     const req = App_1.requestStorage.getStore();
     if (!req)
-        throw new Error('Query helper should run inside a async hook');
+        throw new Error("Query helper should run inside a async hook");
     const result = {};
     for (const prop of properties) {
         result[prop] = req.params[prop];
@@ -29,7 +29,7 @@ function Param(...properties) {
 function Body(...properties) {
     const req = App_1.requestStorage.getStore();
     if (!req)
-        throw new Error('Query helper should run inside a async hook');
+        throw new Error("Query helper should run inside a async hook");
     const result = {};
     for (const prop of properties) {
         result[prop] = req.body[prop];
@@ -39,13 +39,13 @@ function Body(...properties) {
 function Token() {
     const req = App_1.requestStorage.getStore();
     if (!req)
-        throw new Error('Query helper should run inside a async hook');
+        throw new Error("Query helper should run inside a async hook");
     return req.headers.authorization;
 }
-function UserId(userIdPropperty = 'user_id') {
+function UserId(userIdPropperty = "user_id") {
     const req = App_1.requestStorage.getStore();
     if (!req)
-        throw new Error('Query helper should run inside a async hook');
+        throw new Error("Query helper should run inside a async hook");
     return req[userIdPropperty];
 }
 //# sourceMappingURL=requestHelpers.js.map

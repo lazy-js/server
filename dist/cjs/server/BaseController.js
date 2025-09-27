@@ -4,32 +4,39 @@ exports.BaseController = void 0;
 const express_1 = require("express");
 class BaseController {
     constructor(params) {
-        this.pathname = (params === null || params === void 0 ? void 0 : params.pathname) || '';
+        this.get = this.mountGetRoute;
+        this.post = this.mountPostRoute;
+        this.put = this.mountPutRoute;
+        this.delete = this.mountDeleteRoute;
+        this.patch = this.mountPatchRoute;
+        this.pathname = (params === null || params === void 0 ? void 0 : params.pathname) || "";
         this.router = (0, express_1.Router)();
-        this.mountGetRoute('/ping', async function (req, res, next) {
-            res.send('pong');
-        });
+        if (params === null || params === void 0 ? void 0 : params.healthRoute) {
+            this.mountGetRoute(params.healthRoute, async function (req, res, next) {
+                res.status(200).send("ok");
+            });
+        }
     }
-    mountPostRoute(route = '/', handler, definition) {
-        this.router.post(this.pathname + route, handler);
+    mountPostRoute(route = "/", ...handler) {
+        this.router.post(this.pathname + route, ...handler);
     }
-    mountGetRoute(route = '/', handler, definition) {
-        this.router.get(this.pathname + route, handler);
+    mountGetRoute(route = "/", ...handler) {
+        this.router.get(this.pathname + route, ...handler);
     }
-    mountPutRoute(route = '/', handler, definition) {
-        this.router.put(this.pathname + route, handler);
+    mountPutRoute(route = "/", ...handler) {
+        this.router.put(this.pathname + route, ...handler);
     }
-    mountDeleteRoute(route = '/', handler, definition) {
-        this.router.delete(this.pathname + route, handler);
+    mountDeleteRoute(route = "/", ...handler) {
+        this.router.delete(this.pathname + route, ...handler);
     }
-    mountPatchRoute(route = '/', handler, definition) {
-        this.router.patch(this.pathname + route, handler);
+    mountPatchRoute(route = "/", ...handler) {
+        this.router.patch(this.pathname + route, ...handler);
     }
-    mountController(controller, route = '/') {
+    mountController(controller, route = "/") {
         this.mountRouter(controller.getRouter(), route);
         return this;
     }
-    mountRouter(router, route = '/') {
+    mountRouter(router, route = "/") {
         this.router.use(this.pathname + route, router);
         return this;
     }

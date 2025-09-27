@@ -1,48 +1,47 @@
 {
-  "name": "@lazy-js/server",
-  "version": "1.0.0",
-  "description": "",
-  "main": "./dist/cjs/index.js",
-  "module": "./dist/esm/index.js",
-  "types": "./dist/types/index.d.ts",
-  "exports": {
-    ".": {
-      "require": "./dist/cjs/index.js",
-      "import": "./dist/esm/index.js",
-      "types": "./dist/types/index.d.ts"
-    }
-  },
-  "files": [
-    "dist"
-  ],
-  "scripts": {
-    "dev": "npm run dev:esm && npm run dev:cjs",
-    "dev:esm": "tsc --watch --project tsconfig.json",
-    "dev:cjs": "tsc --watch --project tsconfig.cjs.json",
-    "start": "node dist/cjs/index.js",
-    "prepublishOnly": "npm run build",
-    "build": "npm run build:esm && npm run build:cjs",
-    "build:esm": "tsc --project tsconfig.json",
-    "build:cjs": "tsc --project tsconfig.cjs.json",
-    "test": "tsc --project tsconfig.test.json && vitest"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "devDependencies": {
-    "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.3",
-    "@types/morgan": "^1.9.10",
-    "typescript": "^5.9.2",
-    "vitest": "^3.2.4"
-  },
-  "dependencies": {
-    "@lazy-js/utils": "github:lazy-js/utils",
-    "async_hooks": "^1.0.0",
-    "cors": "^2.8.5",
-    "express": "^5.1.0",
-    "helmet": "^8.1.0",
-    "morgan": "^1.10.1"
-  }
+        "name": "@lazy-js/server",
+        "version": "1.0.0",
+        "description": "",
+        "main": "./dist/cjs/index.js",
+        "module": "./dist/esm/index.js",
+        "types": "./dist/types/index.d.ts",
+        "exports": {
+                ".": {
+                        "require": "./dist/cjs/index.js",
+                        "import": "./dist/esm/index.js",
+                        "types": "./dist/types/index.d.ts"
+                }
+        },
+        "files": [
+                "dist"
+        ],
+        "scripts": {
+                "dev": "npm run dev:esm && npm run dev:cjs",
+                "dev:esm": "tsc --watch --project tsconfig.json",
+                "dev:cjs": "tsc --watch --project tsconfig.cjs.json",
+                "start": "node dist/cjs/index.js",
+                "prepublishOnly": "npm run build",
+                "build": "npm run build:esm && npm run build:cjs",
+                "build:esm": "tsc --project tsconfig.json",
+                "build:cjs": "tsc --project tsconfig.cjs.json",
+                "test": "tsc --project tsconfig.test.json && vitest"
+        },
+        "keywords": [],
+        "author": "",
+        "license": "ISC",
+        "type": "commonjs",
+        "devDependencies": {
+                "@types/cors": "^2.8.19",
+                "@types/express": "^5.0.3",
+                "@types/morgan": "^1.9.10",
+                "typescript": "^5.9.2",
+                "vitest": "^3.2.4"
+        },
+        "dependencies": {
+                "async_hooks": "^1.0.0",
+                "cors": "^2.8.5",
+                "express": "^5.1.0",
+                "helmet": "^8.1.0",
+                "morgan": "^1.10.1"
+        }
 }

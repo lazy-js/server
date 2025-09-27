@@ -1,26 +1,49 @@
-import { Request, Response, NextFunction } from 'express';
-import {
-  handeleZodError,
-  errorResponse,
-  AppError,
-  generalErrors,
-} from '@lazy-js/utils';
-export function globalErrorHandler(
-  err: any,
-  _: Request,
-  res: Response,
-  __: NextFunction,
-) {
-  if (Array.isArray(err.errors)) {
-    const zodError = handeleZodError(err);
-    return res.status(zodError.statusCode || 500).json(errorResponse(zodError));
-  }
+import { Request, Response, NextFunction } from "express";
 
-  if (err instanceof AppError) {
-    return res.status(err.statusCode || 500).json(errorResponse(err));
-  } else {
-    return res
-      .status(500)
-      .json(errorResponse(new AppError(generalErrors.INTERNAL_SERVER_ERROR)));
-  }
+interface GlobalErrorHandlerConfig {
+        serviceName?: string;
+        traceIdHeader?: string;
+        traceIdProperty?: string;
+}
+
+export function getGlobalErrorHandler(config?: GlobalErrorHandlerConfig) {
+        const _config: Required<GlobalErrorHandlerConfig> = {
+                serviceName: config?.serviceName || "unknown service",
+                traceIdHeader: config?.traceIdHeader || "x-trace-id",
+                traceIdProperty: config?.traceIdProperty || "traceId",
+        };
+        return function globalErrorHandler(err: any, req: Request, res: Response, __: NextFunction) {
+                const sharedErrorObject = {
+                        [_config.traceIdProperty]: req.headers[_config.traceIdHeader],
+                        serviceName: _config.serviceName,
+                        timestamp: new Date(),
+                };
+
+                const interfaceServerError = {
+                        code: "INTERNAL_SERVER_ERROR",
+                        message: "internal server error catched in default global error handler",
+                        ...sharedErrorObject,
+                };
+
+                if (typeof err === "object") {
+                        const message = err.code || err.message;
+                        return res.status(500).json({
+                                success: false,
+                                error: message
+                                        ? { code: message, message: message, ...sharedErrorObject }
+                                        : interfaceServerError,
+                        });
+                }
+                if (typeof err === "string") {
+                        return res.status(500).json({
+                                success: false,
+                                error: { code: err, message: err, ...sharedErrorObject },
+                        });
+                } else {
+                        return res.status(500).json({
+                                success: false,
+                                error: interfaceServerError,
+                        });
+                }
+        };
 }

@@ -1,32 +1,62 @@
-import express, { Request, Response, NextFunction, ErrorRequestHandler, Router } from "express";
-import cors from "cors";
-import { AppError, generalErrors } from "@lazy-js/utils";
+import "./process";
 import morgan from "morgan";
-import helmet from "helmet";
+import express, { Request, Response, NextFunction, ErrorRequestHandler, Router } from "express";
+
+import cors, { CorsOptions } from "cors";
+import helmet, { HelmetOptions } from "helmet";
 import { EventEmitter } from "events";
 import { logRouterPaths } from "../utils/routerLogger";
 import { AsyncLocalStorage } from "async_hooks";
-import { globalErrorHandler } from "../utils/globalErrorHandler";
-import "./process";
+import { getGlobalErrorHandler } from "../utils/globalErrorHandler";
+
 export { Request, Response, NextFunction, Router };
+
 interface IController {
         getRouter(): Router;
         pathname?: string;
 }
 
-interface AppParams {
+interface ILogger {
+        error(...args: any[]): void;
+        info(...args: any[]): void;
+        warn(...args: any[]): void;
+        group(...args: any[]): void;
+        groupEnd(...args: any[]): void;
+        groupCollapsed(...args: any[]): void;
+        table(...args: any[]): void;
+}
+
+interface LogOptions {
+        logMorgan?: boolean;
+        logRoutes?: boolean;
+        logger?: ILogger;
+}
+
+interface SecurityOptions {
+        cors?: "disabled" | CorsOptions;
+        helmet?: "disabled" | HelmetOptions;
+}
+
+interface Config {
         port: number;
-        allowedOrigins: string[];
-        disableRequestLogging?: boolean;
-        disableSecurityHeaders?: boolean;
-        enableRoutesLogging?: boolean;
         serviceName?: string;
-        prefix?: string;
+        routerPrefix?: string;
+        parseJson?: boolean;
+        globalErrorHandler?: ErrorRequestHandler;
+        traceIdHeader?: string;
+        traceIdProperty?: string;
+}
+
+interface AppParams {
+        config: Config;
+        security?: SecurityOptions;
+        log?: LogOptions;
 }
 
 interface AppEvents {
-        started: () => void;
-        error: (err: Error, req: Request) => void;
+        started: (port?: number, pid?: number) => void;
+        "start-error": (err: any) => void;
+        "err-in-global-handler": (err: Error, req: Request) => void;
 }
 
 class AppEventEmitter extends EventEmitter {
@@ -47,24 +77,44 @@ export const requestStorage = new AsyncLocalStorage<Request>();
 
 export class App extends AppEventEmitter {
         static requestStorage = requestStorage;
-        private readonly port: number;
         public expressApp: express.Application;
         private routes: Router[] = [];
-        private allowedOrigins: string[];
-        private disableRequestLogging: boolean;
-        private disableSecurityHeaders: boolean;
-        public serviceName: string;
-        private prefix: string;
-        private enableRoutesLogging: boolean;
+
+        public config: Required<Config>;
+        public log: Required<LogOptions>;
+        public security: Required<SecurityOptions>;
+
         constructor(params: AppParams) {
                 super();
-                this.port = params.port;
-                this.serviceName = params.serviceName || "unknown";
-                this.prefix = params.prefix || "";
-                this.allowedOrigins = params.allowedOrigins;
-                this.disableRequestLogging = !!params.disableRequestLogging;
-                this.disableSecurityHeaders = !!params.disableSecurityHeaders;
-                this.enableRoutesLogging = !!params.enableRoutesLogging;
+                const serviceName = params.config.serviceName || "unknown";
+                const traceIdHeader = params.config.traceIdHeader || "x-trace-id";
+                const traceIdProperty = params.config.traceIdProperty || "traceId";
+                const _globalErrorHandler = getGlobalErrorHandler({
+                        serviceName,
+                        traceIdHeader,
+                        traceIdProperty,
+                });
+
+                this.config = {
+                        port: params.config.port,
+                        serviceName: serviceName,
+                        routerPrefix: params.config.routerPrefix || "",
+                        parseJson: !!params.config.parseJson,
+                        traceIdHeader: traceIdHeader,
+                        traceIdProperty: traceIdProperty,
+                        globalErrorHandler: params.config.globalErrorHandler ?? _globalErrorHandler,
+                };
+
+                this.log = {
+                        logMorgan: !!params?.log?.logMorgan,
+                        logRoutes: !!params?.log?.logMorgan,
+                        logger: params.log?.logger ?? console,
+                };
+
+                this.security = {
+                        cors: params.security?.cors || "disabled",
+                        helmet: params.security?.helmet || "disabled",
+                };
 
                 this.expressApp = express();
                 this.routes = [];
@@ -73,14 +123,22 @@ export class App extends AppEventEmitter {
         }
 
         private setupEssentialMiddlewares(): void {
-                this.expressApp.use(cors({ origin: this.allowedOrigins }));
-                this.expressApp.use(express.json());
-                if (!this.disableSecurityHeaders) {
-                        this.expressApp.use(helmet());
+                if (this.security.cors !== "disabled") {
+                        this.expressApp.use(cors(this.security.cors));
                 }
-                if (!this.disableRequestLogging) {
+
+                if (this.config.parseJson) {
+                        this.expressApp.use(express.json());
+                }
+
+                if (this.security.helmet !== "disabled") {
+                        this.expressApp.use(helmet(this.security.helmet));
+                }
+
+                if (!this.log.logMorgan) {
                         this.expressApp.use(morgan("dev"));
                 }
+
                 this.expressApp.use((req, res, next) => {
                         App.requestStorage.run(req, () => next());
                 });
@@ -98,38 +156,36 @@ export class App extends AppEventEmitter {
 
         private setupNotFoundRoute(): void {
                 this.expressApp.use((req, res, next) => {
-                        next(new AppError(generalErrors.PATH_NOT_FOUND));
+                        next(new Error("PATH_NOT_FOUND"));
                 });
         }
 
         private setupErrorHandling(): void {
-                const generalErrorHandler: ErrorRequestHandler = (
-                        err: Error,
-                        req: Request,
-                        res: Response,
-                        next: NextFunction
-                ) => {
-                        this.emit("error", err, req);
-                        globalErrorHandler(err, req, res, next);
-                };
-                this.expressApp.use(generalErrorHandler);
+                this.expressApp.use((err: any, req: Request, res: Response, next: NextFunction) => {
+                        try {
+                                this.emit("err-in-global-handler", err, req);
+                        } catch (e) {}
+                        this.config.globalErrorHandler(err, req, res, next);
+                });
         }
 
         public mountModule = this.mountController;
         public mountController(controller: IController, route: string = "") {
+                const routerPrefix = this.config.routerPrefix;
                 if (
                         (controller.pathname && !controller.pathname.startsWith("/")) ||
-                        (this.prefix && !this.prefix.startsWith("/")) ||
-                        (this.prefix && this.prefix.endsWith("/"))
+                        (routerPrefix && !routerPrefix.startsWith("/")) ||
+                        (routerPrefix && routerPrefix.endsWith("/"))
                 ) {
                         throw new Error("Invalid endpoint configuration");
                 }
-                if (this.enableRoutesLogging)
+                if (this.log.logRoutes)
                         logRouterPaths(controller.getRouter(), {
-                                basePath: this.prefix + route,
+                                basePath: routerPrefix + route,
                                 label: controller.pathname?.toUpperCase(),
+                                logger: this.log.logger,
                         });
-                this.expressApp.use(this.prefix + route, controller.getRouter());
+                this.expressApp.use(routerPrefix + route, controller.getRouter());
                 return this;
         }
 
@@ -139,16 +195,10 @@ export class App extends AppEventEmitter {
                         (prefix && !prefix.startsWith("/")) ||
                         (prefix && prefix.endsWith("/"))
                 ) {
-                        throw new AppError({
-                                code: "INVALID_ENDPOINT",
-                                statusCode: 400,
-                                label: "Invalid endpoint",
-                                category: "router",
-                        });
+                        throw new Error("Invalid endpoint or prefix");
                 }
 
                 this.expressApp.use(prefix ? prefix + (endpoint ? endpoint : "/") : endpoint ? endpoint : "/", router);
-
                 this.routes.push(router);
                 return this;
         }
@@ -157,11 +207,16 @@ export class App extends AppEventEmitter {
                 try {
                         this.setupNotFoundRoute();
                         this.setupErrorHandling();
-                        this.expressApp.listen(alternativePort || this.port, () => {
-                                this.emit("started");
+
+                        const PORT = alternativePort || this.config.port;
+                        this.expressApp.listen(PORT, () => {
+                                this.emit("started", PORT, process.pid);
                         });
-                } catch (error) {
-                        throw error;
+                } catch (startError) {
+                        try {
+                                this.emit("start-error", startError);
+                        } catch (e) {}
+                        throw startError;
                 }
         }
 }
